@@ -1,0 +1,181 @@
+<main class="shell">
+  <section class="panel" *ngIf="loading">
+    <p class="muted">Загрузка теста...</p>
+  </section>
+
+  <section class="panel" *ngIf="!loading && loadError">
+    <h1>Тест недоступен</h1>
+    <p class="muted">{{ loadError }}</p>
+  </section>
+
+  <section class="panel start" *ngIf="!loading && !loadError && screen === 'start'">
+    <div>
+      <p class="eyebrow">Тестирование</p>
+      <h1>Введите данные</h1>
+      <p class="muted">В тесте {{ questions.length }} вопросов. Результат появится после последнего ответа.</p>
+    </div>
+
+    <form class="form" (ngSubmit)="startQuiz()">
+      <label>
+        <span>ФИО</span>
+        <input name="fullName" [(ngModel)]="student.fullName" autocomplete="name" required>
+      </label>
+
+      <label>
+        <span>Должность</span>
+        <input name="position" [(ngModel)]="student.position" required>
+      </label>
+
+      <label>
+        <span>Отделение</span>
+        <input name="department" [(ngModel)]="student.department" required>
+      </label>
+
+      <div class="button-row">
+        <button type="submit" [disabled]="!canStart">Начать тест</button>
+        <button type="button" class="secondary" (click)="openAdminLogin()">Для администратора</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel admin-login" *ngIf="screen === 'admin-login'">
+    <div>
+      <p class="eyebrow">Администратор</p>
+      <h1>Введите пароль</h1>
+      <p class="muted">После входа откроется таблица результатов.</p>
+    </div>
+
+    <form class="form" (ngSubmit)="submitAdminPassword()">
+      <label>
+        <span>Пароль</span>
+        <input
+          name="adminPassword"
+          type="password"
+          [(ngModel)]="adminPassword"
+          autocomplete="current-password"
+          required
+        >
+      </label>
+
+      <p class="status error" *ngIf="adminError">{{ adminError }}</p>
+
+      <div class="button-row">
+        <button type="submit" [disabled]="adminLoading">
+          {{ adminLoading ? 'Загрузка...' : 'Войти' }}
+        </button>
+        <button type="button" class="secondary" (click)="backToStart()">Назад</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel admin-results" *ngIf="screen === 'admin-results'">
+    <header class="quiz-header">
+      <div>
+        <p class="eyebrow">Администратор</p>
+        <h1>Результаты теста</h1>
+      </div>
+      <button type="button" class="secondary" (click)="loadResults()" [disabled]="adminLoading">
+        Обновить
+      </button>
+    </header>
+
+    <p class="status error" *ngIf="adminError">{{ adminError }}</p>
+
+    <label class="search">
+      <span>Поиск по ФИО</span>
+      <input
+        name="surnameFilter"
+        type="search"
+        [(ngModel)]="surnameFilter"
+        placeholder="Введите ФИО"
+        autocomplete="off"
+      >
+    </label>
+
+    <div class="table-wrap" *ngIf="results.length; else emptyResults">
+      <table>
+        <thead>
+          <tr>
+            <th class="sortable" (click)="setSort('createdAt')">Дата{{ sortIndicator('createdAt') }}</th>
+            <th>ФИО</th>
+            <th class="sortable" (click)="setSort('position')">Должность{{ sortIndicator('position') }}</th>
+            <th class="sortable" (click)="setSort('department')">Отделение{{ sortIndicator('department') }}</th>
+            <th>Результат</th>
+            <th>Процент</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let result of filteredResults">
+            <td>{{ formatDate(result.createdAt) }}</td>
+            <td>{{ result.fullName }}</td>
+            <td>{{ result.position || '-' }}</td>
+            <td>{{ result.department || '-' }}</td>
+            <td>{{ result.score }} / {{ result.totalQuestions }}</td>
+            <td>{{ result.percent }}%</td>
+          </tr>
+          <tr *ngIf="!filteredResults.length">
+            <td colspan="6" class="muted">По заданному ФИО ничего не найдено.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <ng-template #emptyResults>
+      <p class="muted">Пока нет сохраненных результатов.</p>
+    </ng-template>
+
+    <button type="button" class="secondary" (click)="backToStart()">На начальную страницу</button>
+  </section>
+
+  <section class="panel quiz" *ngIf="screen === 'quiz' && currentQuestion as question">
+    <header class="quiz-header">
+      <div>
+        <p class="eyebrow">{{ fullName }}</p>
+        <h1>Вопрос {{ currentIndex + 1 }} из {{ questions.length }}</h1>
+      </div>
+      <span class="counter">{{ progress }}%</span>
+    </header>
+
+    <div class="progress" aria-hidden="true">
+      <div [style.width.%]="progress"></div>
+    </div>
+
+    <article class="question">
+      <h2>{{ question.text }}</h2>
+      <p class="hint" *ngIf="hasMultipleCorrect(question)">Выберите все правильные варианты.</p>
+
+      <div class="answers">
+        <button
+          type="button"
+          class="answer"
+          *ngFor="let answer of question.answers; let answerIndex = index"
+          [class.selected]="isSelected(answerIndex)"
+          (click)="hasMultipleCorrect(question) ? toggleMultiple(answerIndex) : selectSingle(answerIndex)"
+        >
+          <span class="answer-label">{{ answer.label }}</span>
+          <span>{{ answer.text }}</span>
+        </button>
+      </div>
+    </article>
+
+    <footer class="actions">
+      <button type="button" class="secondary" (click)="previousQuestion()" [disabled]="currentIndex === 0">
+        Назад
+      </button>
+      <button type="button" (click)="nextQuestion()" [disabled]="!canGoNext">
+        {{ isLastQuestion ? 'Завершить' : 'Далее' }}
+      </button>
+    </footer>
+  </section>
+
+  <section class="panel result" *ngIf="screen === 'result'">
+    <p class="eyebrow">{{ fullName }}</p>
+    <h1>Результат</h1>
+    <div class="score">{{ score }} / {{ questions.length }}</div>
+    <p class="muted">Правильных ответов: {{ percent }}%</p>
+    <p class="status" *ngIf="savingResult">Сохраняем результат...</p>
+    <p class="status success" *ngIf="resultSaved">Результат сохранен в базу.</p>
+    <p class="status error" *ngIf="saveError">{{ saveError }}</p>
+    <button type="button" (click)="restart()">Пройти заново</button>
+  </section>
+</main>
