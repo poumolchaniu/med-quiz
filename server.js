@@ -8,6 +8,11 @@ const port = Number(process.env.PORT || 3000);
 const dataDir = path.join(__dirname, 'data');
 const dbPath = path.join(dataDir, 'results.db');
 const staticDir = path.join(__dirname, 'dist', 'quiz-app', 'browser');
+const adminPassword = process.env.ADMIN_PASSWORD || '';
+
+if (!adminPassword) {
+  console.warn('WARNING: ADMIN_PASSWORD is not set — admin login will reject all attempts');
+}
 
 fs.mkdirSync(dataDir, { recursive: true });
 
@@ -52,6 +57,24 @@ app.use((req, res, next) => {
   }
 
   next();
+});
+
+function requireAdmin(req, res, next) {
+  const provided = req.headers['x-admin-password'];
+  if (!adminPassword || provided !== adminPassword) {
+    res.status(401).json({ error: 'Доступ запрещён' });
+    return;
+  }
+  next();
+}
+
+app.post('/api/admin/auth', (req, res) => {
+  const password = String(req.body?.password ?? '');
+  if (!adminPassword || password !== adminPassword) {
+    res.status(401).json({ error: 'Неверный пароль' });
+    return;
+  }
+  res.json({ ok: true });
 });
 
 app.post('/api/results', (req, res) => {
@@ -99,7 +122,7 @@ app.post('/api/results', (req, res) => {
   );
 });
 
-app.get('/api/results', (req, res) => {
+app.get('/api/results', requireAdmin, (req, res) => {
   db.all(
     `
       SELECT

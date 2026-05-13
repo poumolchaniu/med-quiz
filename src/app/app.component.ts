@@ -59,6 +59,7 @@ export class AppComponent implements OnInit {
   adminPassword = '';
   adminError = '';
   adminLoading = false;
+  adminAuth = '';
   results: TestResult[] = [];
   surnameFilter = '';
   sortColumn: SortColumn = 'createdAt';
@@ -187,12 +188,29 @@ export class AppComponent implements OnInit {
   }
 
   async submitAdminPassword(): Promise<void> {
-    if (this.adminPassword !== '221600') {
-      this.adminError = 'Неверный пароль';
-      return;
-    }
+    this.adminError = '';
+    this.adminLoading = true;
 
-    await this.loadResults();
+    try {
+      const response = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: this.adminPassword })
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        this.adminError = body.error || 'Неверный пароль';
+        return;
+      }
+
+      this.adminAuth = this.adminPassword;
+      await this.loadResults();
+    } catch (error) {
+      this.adminError = error instanceof Error ? error.message : 'Не удалось войти';
+    } finally {
+      this.adminLoading = false;
+    }
   }
 
   async loadResults(): Promise<void> {
@@ -200,7 +218,16 @@ export class AppComponent implements OnInit {
     this.adminError = '';
 
     try {
-      const response = await fetch('/api/results');
+      const response = await fetch('/api/results', {
+        headers: { 'X-Admin-Password': this.adminAuth }
+      });
+
+      if (response.status === 401) {
+        this.adminAuth = '';
+        this.adminError = 'Сессия истекла, войдите заново';
+        this.screen = 'admin-login';
+        return;
+      }
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
@@ -218,6 +245,7 @@ export class AppComponent implements OnInit {
 
   backToStart(): void {
     this.adminPassword = '';
+    this.adminAuth = '';
     this.adminError = '';
     this.screen = 'start';
   }
