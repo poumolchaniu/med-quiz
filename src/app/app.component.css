@@ -148,6 +148,15 @@ button:disabled {
   background: #f8fafc;
 }
 
+.danger {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
 .counter {
   background: #eef2ff;
   border-radius: 999px;

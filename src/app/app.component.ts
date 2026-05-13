@@ -64,6 +64,7 @@ export class AppComponent implements OnInit {
   adminError = '';
   adminLoading = false;
   adminAuth = '';
+  deletingResultId: number | null = null;
   results: TestResult[] = [];
   surnameFilter = '';
   sortColumn: SortColumn = 'createdAt';
@@ -276,7 +277,47 @@ export class AppComponent implements OnInit {
     this.adminPassword = '';
     this.adminAuth = '';
     this.adminError = '';
+    this.deletingResultId = null;
     this.screen = 'start';
+  }
+
+  async deleteResult(result: TestResult): Promise<void> {
+    if (this.deletingResultId !== null) {
+      return;
+    }
+
+    const confirmed = confirm(`Удалить запись "${result.fullName}" от ${this.formatDate(result.createdAt)}?`);
+    if (!confirmed) {
+      return;
+    }
+
+    this.deletingResultId = result.id;
+    this.adminError = '';
+
+    try {
+      const response = await fetch(`/api/results/${result.id}`, {
+        method: 'DELETE',
+        headers: { 'X-Admin-Password': this.adminAuth }
+      });
+
+      if (response.status === 401) {
+        this.adminAuth = '';
+        this.adminError = 'Сессия истекла, войдите заново';
+        this.screen = 'admin-login';
+        return;
+      }
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || 'Не удалось удалить запись');
+      }
+
+      this.results = this.results.filter((item) => item.id !== result.id);
+    } catch (error) {
+      this.adminError = error instanceof Error ? error.message : 'Не удалось удалить запись';
+    } finally {
+      this.deletingResultId = null;
+    }
   }
 
   get filteredResults(): TestResult[] {

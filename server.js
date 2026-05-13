@@ -49,7 +49,7 @@ app.use(express.json());
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', 'http://127.0.0.1:4200');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
 
   if (req.method === 'OPTIONS') {
     res.sendStatus(204);
@@ -171,6 +171,33 @@ app.get('/api/results', requireAdmin, (req, res) => {
       }
 
       res.json(rows);
+    }
+  );
+});
+
+app.delete('/api/results/:id', requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: 'Некорректный ID записи' });
+    return;
+  }
+
+  db.run(
+    'DELETE FROM results WHERE id = ?',
+    [id],
+    function onDelete(error) {
+      if (error) {
+        res.status(500).json({ error: 'Не удалось удалить результат' });
+        return;
+      }
+
+      if (this.changes === 0) {
+        res.status(404).json({ error: 'Запись не найдена' });
+        return;
+      }
+
+      res.status(204).send();
     }
   );
 });
