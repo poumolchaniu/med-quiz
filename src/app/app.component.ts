@@ -119,6 +119,20 @@ export class AppComponent implements OnInit {
     this.loadError = '';
 
     try {
+      const fullName = this.student.fullName.trim();
+      const existsResponse = await fetch(`/api/results/exists?fullName=${encodeURIComponent(fullName)}`);
+
+      if (!existsResponse.ok) {
+        const body = await existsResponse.json().catch(() => ({}));
+        throw new Error(body.error || 'Не удалось проверить, проходил ли пользователь тест');
+      }
+
+      const existsPayload: { exists?: boolean } = await existsResponse.json();
+      if (existsPayload.exists) {
+        alert('Вы уже проходил тест.');
+        return;
+      }
+
       const prefix = this.student.category === 'doctor' ? 'doc' : 'med';
       const variant = Math.random() < 0.5 ? 1 : 2;
       const file = `${prefix}_test_var${variant}.txt`;

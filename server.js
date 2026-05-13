@@ -122,6 +122,33 @@ app.post('/api/results', (req, res) => {
   );
 });
 
+app.get('/api/results/exists', (req, res) => {
+  const fullName = cleanText(req.query.fullName);
+
+  if (!fullName) {
+    res.status(400).json({ error: 'ФИО обязательно' });
+    return;
+  }
+
+  db.get(
+    `
+      SELECT id
+      FROM results
+      WHERE lower(trim(coalesce(nullif(full_name, ''), trim(last_name || ' ' || first_name || ' ' || coalesce(middle_name, ''))))) = lower(?)
+      LIMIT 1
+    `,
+    [fullName],
+    (error, row) => {
+      if (error) {
+        res.status(500).json({ error: 'Не удалось проверить результат' });
+        return;
+      }
+
+      res.json({ exists: Boolean(row) });
+    }
+  );
+});
+
 app.get('/api/results', requireAdmin, (req, res) => {
   db.all(
     `
