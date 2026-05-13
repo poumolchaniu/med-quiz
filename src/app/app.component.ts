@@ -122,7 +122,7 @@ export class AppComponent implements OnInit {
       const prefix = this.student.category === 'doctor' ? 'doc' : 'med';
       const variant = Math.random() < 0.5 ? 1 : 2;
       const file = `${prefix}_test_var${variant}.txt`;
-      const response = await fetch(file);
+      const response = await fetch(`assets/tests/${file}`);
 
       if (!response.ok) {
         throw new Error(`Не удалось загрузить ${file} (${response.status})`);
@@ -352,20 +352,24 @@ export class AppComponent implements OnInit {
   private parseQuestions(source: string): Question[] {
     return source
       .replace(/\r\n/g, '\n')
-      .split(/\n{2,}/)
-      .map((block) => block.split('\n').map((line) => line.trim()).filter(Boolean))
+      .split(/\n\s*\n+/)
+      .map((block) => block.split('\n').map((line) => line.trimEnd()).filter((line) => Boolean(line.trim())))
       .map((lines) => this.parseQuestionBlock(lines))
       .filter((question): question is Question => Boolean(question));
   }
 
   private parseQuestionBlock(lines: string[]): Question | null {
-    const firstAnswerIndex = lines.findIndex((line) => this.isAnswerLine(line));
+    let firstAnswerIndex = lines.findIndex((line) => this.isAnswerLine(line, true));
+
+    if (firstAnswerIndex <= 0) {
+      firstAnswerIndex = lines.findIndex((line, index) => index > 0 && this.isAnswerLine(line));
+    }
 
     if (firstAnswerIndex <= 0) {
       return null;
     }
 
-    const text = lines.slice(0, firstAnswerIndex).join(' ');
+    const text = this.normalizeQuestionText(lines.slice(0, firstAnswerIndex).join(' '));
     const answers = lines.slice(firstAnswerIndex)
       .map((line) => this.parseAnswer(line))
       .filter((answer): answer is Answer => Boolean(answer));
@@ -374,7 +378,7 @@ export class AppComponent implements OnInit {
   }
 
   private parseAnswer(line: string): Answer | null {
-    const match = line.match(/^([0-9]+|[А-ЯЁA-Z])[\).]\s*(.+)$/i);
+    const match = line.trimStart().match(/^([0-9]+|[А-ЯЁA-Z])[\).]\s*(.+)$/i);
 
     if (!match) {
       return null;
@@ -390,8 +394,15 @@ export class AppComponent implements OnInit {
     };
   }
 
-  private isAnswerLine(line: string): boolean {
-    return /^([0-9]+|[А-ЯЁA-Z])[\).]\s+/i.test(line);
+  private isAnswerLine(line: string, requireIndent = false): boolean {
+    const pattern = requireIndent
+      ? /^\s+([0-9]+|[А-ЯЁA-Z])[\).]\s+/i
+      : /^\s*([0-9]+|[А-ЯЁA-Z])[\).]\s+/i;
+    return pattern.test(line);
+  }
+
+  private normalizeQuestionText(text: string): string {
+    return text.replace(/^\s*\d+[\).]?\s*/, '').trim();
   }
 
   private isCorrect(question: Question, selected: number[]): boolean {
