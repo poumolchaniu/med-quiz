@@ -17,10 +17,13 @@ interface Question {
   answers: Answer[];
 }
 
+type Category = '' | 'doctor' | 'nurse';
+
 interface Student {
   fullName: string;
   position: string;
   department: string;
+  category: Category;
 }
 
 interface TestResult {
@@ -45,13 +48,14 @@ export class AppComponent implements OnInit {
   student: Student = {
     fullName: '',
     position: '',
-    department: ''
+    department: '',
+    category: ''
   };
 
   questions: Question[] = [];
   selections: number[][] = [];
   currentIndex = 0;
-  loading = true;
+  startingQuiz = false;
   loadError = '';
   savingResult = false;
   resultSaved = false;
@@ -65,23 +69,7 @@ export class AppComponent implements OnInit {
   sortColumn: SortColumn = 'createdAt';
   sortDirection: SortDirection = 'desc';
 
-  async ngOnInit(): Promise<void> {
-    try {
-      const response = await fetch('tests.txt');
-
-      if (!response.ok) {
-        throw new Error(`Не удалось загрузить tests.txt (${response.status})`);
-      }
-
-      const source = await response.text();
-      this.questions = this.parseQuestions(source);
-      this.selections = this.questions.map(() => []);
-    } catch (error) {
-      this.loadError = error instanceof Error ? error.message : 'Не удалось загрузить тест';
-    } finally {
-      this.loading = false;
-    }
-  }
+  async ngOnInit(): Promise<void> {}
 
   get currentQuestion(): Question | undefined {
     return this.questions[this.currentIndex];
@@ -96,7 +84,7 @@ export class AppComponent implements OnInit {
       this.student.fullName.trim()
       && this.student.position.trim()
       && this.student.department.trim()
-      && this.questions.length
+      && this.student.category
     );
   }
 
@@ -122,13 +110,40 @@ export class AppComponent implements OnInit {
     return this.questions.length ? Math.round(((this.currentIndex + 1) / this.questions.length) * 100) : 0;
   }
 
-  startQuiz(): void {
-    if (!this.canStart) {
+  async startQuiz(): Promise<void> {
+    if (!this.canStart || this.startingQuiz) {
       return;
     }
 
-    this.screen = 'quiz';
-    this.currentIndex = 0;
+    this.startingQuiz = true;
+    this.loadError = '';
+
+    try {
+      const prefix = this.student.category === 'doctor' ? 'doc' : 'med';
+      const variant = Math.random() < 0.5 ? 1 : 2;
+      const file = `${prefix}_test_var${variant}.txt`;
+      const response = await fetch(file);
+
+      if (!response.ok) {
+        throw new Error(`Не удалось загрузить ${file} (${response.status})`);
+      }
+
+      const source = await response.text();
+      const parsed = this.parseQuestions(source);
+
+      if (!parsed.length) {
+        throw new Error('Тест пуст');
+      }
+
+      this.questions = parsed;
+      this.selections = this.questions.map(() => []);
+      this.currentIndex = 0;
+      this.screen = 'quiz';
+    } catch (error) {
+      this.loadError = error instanceof Error ? error.message : 'Не удалось загрузить тест';
+    } finally {
+      this.startingQuiz = false;
+    }
   }
 
   selectSingle(answerIndex: number): void {

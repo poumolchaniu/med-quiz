@@ -1,18 +1,9 @@
 <main class="shell">
-  <section class="panel" *ngIf="loading">
-    <p class="muted">Загрузка теста...</p>
-  </section>
-
-  <section class="panel" *ngIf="!loading && loadError">
-    <h1>Тест недоступен</h1>
-    <p class="muted">{{ loadError }}</p>
-  </section>
-
-  <section class="panel start" *ngIf="!loading && !loadError && screen === 'start'">
+  <section class="panel start" *ngIf="screen === 'start'">
     <div>
       <p class="eyebrow">Тестирование</p>
       <h1>Введите данные</h1>
-      <p class="muted">В тесте {{ questions.length }} вопросов. Результат появится после последнего ответа.</p>
+      <p class="muted">Выберите категорию и заполните данные. Вариант теста будет назначен случайно.</p>
     </div>
 
     <form class="form" (ngSubmit)="startQuiz()">
@@ -31,8 +22,24 @@
         <input name="department" [(ngModel)]="student.department" required>
       </label>
 
+      <fieldset class="category">
+        <legend>Категория</legend>
+        <label class="radio">
+          <input type="radio" name="category" [(ngModel)]="student.category" value="doctor">
+          <span>Врач</span>
+        </label>
+        <label class="radio">
+          <input type="radio" name="category" [(ngModel)]="student.category" value="nurse">
+          <span>Медсестра</span>
+        </label>
+      </fieldset>
+
+      <p class="status error" *ngIf="loadError">{{ loadError }}</p>
+
       <div class="button-row">
-        <button type="submit" [disabled]="!canStart">Начать тест</button>
+        <button type="submit" [disabled]="!canStart || startingQuiz">
+          {{ startingQuiz ? 'Загрузка...' : 'Начать тест' }}
+        </button>
         <button type="button" class="secondary" (click)="openAdminLogin()">Для администратора</button>
       </div>
     </form>
