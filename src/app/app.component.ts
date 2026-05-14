@@ -83,10 +83,19 @@ export class AppComponent implements OnInit {
   get canStart(): boolean {
     return Boolean(
       this.student.fullName.trim()
-      && this.student.position.trim()
       && this.student.department.trim()
       && this.student.category
     );
+  }
+
+  get position(): string {
+    if (this.student.category === 'doctor') {
+      return 'Врач';
+    }
+    if (this.student.category === 'nurse') {
+      return 'Медсестра';
+    }
+    return '';
   }
 
   get canGoNext(): boolean {
@@ -383,7 +392,7 @@ export class AppComponent implements OnInit {
         },
         body: JSON.stringify({
           fullName: this.student.fullName.trim(),
-          position: this.student.position.trim(),
+          position: this.position,
           department: this.student.department.trim(),
           score: this.score,
           totalQuestions: this.questions.length,
