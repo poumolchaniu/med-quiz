@@ -16,6 +16,11 @@
   padding: 24px;
 }
 
+.shell.admin-results-active {
+  height: 100vh;
+  overflow: hidden;
+}
+
 .panel {
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -34,6 +39,12 @@
 .admin-results {
   display: grid;
   gap: 28px;
+}
+
+.admin-results {
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
 }
 
 .quiz-header,
@@ -305,6 +316,8 @@ button:disabled {
 .table-wrap {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
+  min-height: 0;
+  overflow: auto;
   overflow-x: auto;
 }
 
@@ -350,6 +363,10 @@ tbody tr:last-child td {
   .shell {
     align-items: stretch;
     padding: 12px;
+  }
+
+  .admin-results {
+    max-height: calc(100vh - 24px);
   }
 
   .panel {
